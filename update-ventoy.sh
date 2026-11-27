@@ -3,6 +3,8 @@ set -euo pipefail
 
 output_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 version=${1:-$(curl -fsSL https://api.github.com/repos/ventoy/Ventoy/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].removeprefix("v"))')}
+revision=${2:-1}
+package_version="${version}-${revision}"
 work=$(mktemp -d "$output_dir/.ventoy-build.XXXXXXXX")
 trap 'rm -rf -- "$work"' EXIT
 
@@ -28,14 +30,17 @@ DESKTOP
 cat > "$work/AppDir/AppRun" <<'RUN'
 #!/bin/sh
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-cd "$here/lib/ventoy" || exit 1
-exec ./VentoyGUI.x86_64 "$@"
+run_dir=$(mktemp -d "${TMPDIR:-/tmp}/ventoy.XXXXXXXX") || exit 1
+trap 'rm -rf -- "$run_dir"' EXIT
+cp -a "$here/lib/ventoy/." "$run_dir/" || exit 1
+cd "$run_dir" || exit 1
+./VentoyGUI.x86_64 "$@"
 RUN
 chmod +x "$work/AppDir/AppRun"
 
 cd "$work"
-APPDIR="$work/AppDir" OUTPATH="$work" OUTNAME="Ventoy-${version}-x86_64.AppImage" ./quick-sharun --make-appimage
-image="Ventoy-${version}-x86_64.AppImage"
+APPDIR="$work/AppDir" OUTPATH="$work" OUTNAME="Ventoy-${package_version}-x86_64.AppImage" ./quick-sharun --make-appimage
+image="Ventoy-${package_version}-x86_64.AppImage"
 mv -- "$work/$image" "$output_dir/$image"
 sha256sum "$output_dir/$image"
 printf '打包完成：%s\n' "$output_dir/$image"
