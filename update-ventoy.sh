@@ -2,8 +2,8 @@
 set -euo pipefail
 
 output_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-version=${1:-$(curl -fsSL https://api.github.com/repos/ventoy/Ventoy/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].removeprefix("v"))')}
-revision=${2:-1}
+version=$(curl -fsSL https://api.github.com/repos/ventoy/Ventoy/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].removeprefix("v"))')
+revision=$(git -C "$output_dir" tag --list "v${version}-*" | awk -F- '$NF ~ /^[0-9]+$/ && $NF > latest { latest = $NF } END { print latest + 1 }')
 package_version="${version}-${revision}"
 work=$(mktemp -d "$output_dir/.ventoy-build.XXXXXXXX")
 trap 'rm -rf -- "$work"' EXIT
